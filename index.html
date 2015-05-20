@@ -130,6 +130,90 @@
           
           
             
+              <a class="post-title-link" href="/2015/05/20/Tclip/">
+                Tclip
+              </a>
+            
+          
+        </h1>
+      
+
+      <div class="post-meta">
+        <span class="post-time">
+          发表于 2015-05-20
+        </span>
+
+        
+
+        
+          
+            <span class="post-comments-count">
+            &nbsp; | &nbsp;
+            <a href="/2015/05/20/Tclip/#comments" >
+              <span class="post-comments-count ds-thread-count" data-thread-key="2015/05/20/Tclip/"></span>
+            </a>
+          </span>
+          
+        
+      </div>
+    </div>
+
+    <div class="post-body">
+
+      
+      
+
+      
+        
+          <p>Tclip致力于人脸识别和图片显著性区域的识别。它与其他图片裁剪程序最大的不同之处在于，在裁剪后的图片中保留人脸和其他图片显著性区域。</p>
+<p>演示地址：<a href="http://demo.bo56.com/tclip" target="_blank" rel="external">http://demo.bo56.com/tclip</a></p>
+<h1 id="安装步骤：">安装步骤：</h1><h2 id="源码下载：">源码下载：</h2><h4 id="下载opencv源码：http://www-bo56-com/download/opencv2-tar-bz2">下载opencv源码：<a href="http://www.bo56.com/download/opencv2.tar.bz2" target="_blank" rel="external">http://www.bo56.com/download/opencv2.tar.bz2</a></h4><h4 id="下载Tclip源码：">下载Tclip源码：</h4><p><a href="http://code.taobao.org/p/tclip/src/" target="_blank" rel="external">http://code.taobao.org/p/tclip/src/</a><br><a href="https://github.com/exinnet/tclip" target="_blank" rel="external">https://github.com/exinnet/tclip</a></p>
+<h4 id="安装opencv2：">安装opencv2：</h4><p>此扩展依赖于opencv2.0 之上版本。因此安装前先安装opencv。opencv的安装步骤如下：<br>安装过程中有任何疑问可以加qq 179815944咨询。</p>
+<h4 id="1-安装如下依赖包：_gtk+_gtk+-devel_pkgconfig_libpng_zlib_libjpeg_libtiff_cmake">1.安装如下依赖包： gtk+ gtk+-devel pkgconfig libpng zlib libjpeg libtiff cmake</h4><p>如果是centos可以执行如下命令进行安装依赖包：<br>yum install gtk+ gtk+-devel pkgconfig libpng zlib libjpeg libtiff cmake</p>
+<h4 id="2-安装opencv2，步骤如下：">2.安装opencv2，步骤如下：</h4><p>解压安装包<br><figure class="highlight"><figcaption><span>进入安装包文件夹内。</span></figcaption><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">cmake CMakeLists.txt&#10;make &#38;&#38; make install&#10;vim /etc/profile&#10;//&#27880;&#24847;&#65292;&#22312;&#32534;&#35793;opencv&#26102;&#65292;&#35201;&#20351;&#29992;gcc&#30340;4.4&#29256;&#26412;&#25110;&#32773;&#20043;&#19978;&#12290;&#21542;&#21017;&#20250;&#25253;&#38169;&#12290;</span><br></pre></td></tr></table></figure></p>
+<h4 id="3-设相关环境变量">3.设相关环境变量</h4><figure class="highlight"><figcaption><span>unset i 前增加</span></figcaption><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">export PKG_CONFIG_PATH=/usr/lib/pkgconfig/:/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH&#10;&#20445;&#25345;&#36864;&#20986;&#21518;&#65292;&#25191;&#34892;&#22914;&#19979;&#21629;&#20196;&#10;source /etc/profile&#10;echo &#8220;/usr/local/lib/&#8221; &#62; /etc/ld.so.conf.d/opencv.conf&#10;ldconfig</span><br></pre></td></tr></table></figure>
+<p>安装php图片裁剪tclip扩展<br>cd 到源代码目录中的php_ext文件夹<br><figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">./configure&#10;make&#10;cp modules/tclip.so &#21040; extension &#30446;&#24405;&#10;&#20462;&#25913;php.ini&#12290;&#21152;&#20837; extension=tclip.so</span><br></pre></td></tr></table></figure></p>
+<p>重启fpm<br>安装命令行<br>如果想使用命令行方式，可以进行如下安装<br>cd 进入安装包soft文件夹内<br><figure class="highlight"><figcaption><span>+x ./tclip.sh</span></figcaption><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">./tclip.sh</span><br></pre></td></tr></table></figure></p>
+<p>使用方法说明</p>
+<h2 id="第一种：在php中图片裁剪使用格式：">第一种：在php中图片裁剪使用格式：</h2><p>tclip(文件原路径，裁剪后的图片保存路径，裁剪后的图片宽度，裁剪后的图片高度)<br><figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$source_file = &#8220;/tmp/a.jpg&#8221;;&#10;$dest_file = &#8220;/www/a_dest.jpg&#8221;;&#10;$width = 400;&#10;$height = 200;&#10;$ret =tclip($source_file, $dest_file, $width, $height);</span><br></pre></td></tr></table></figure></p>
+<p>执行成功$ret 为true，否则为false</p>
+<h2 id="第二种：命令行">第二种：命令行</h2><figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">-s &#21407;&#22270;&#36335;&#24452;&#10;-d &#35009;&#21098;&#21518;&#30340;&#22270;&#29255;&#20445;&#23384;&#36335;&#24452;&#10;-w &#35009;&#21098;&#21518;&#30340;&#22270;&#29255;&#23485;&#24230;&#10;-h &#35009;&#21098;&#21518;&#30340;&#22270;&#29255;&#39640;&#24230;&#10;./tclip -s a.jpg -d a_dest.jpg -w 400 -h 200</span><br></pre></td></tr></table></figure>
+
+        
+      
+    </div>
+
+    <div class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/Tclip/"> #Tclip </a>
+          
+        </div>
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </div>
+  </div>
+
+
+    
+      
+
+  <div class="post post-type-normal ">
+    <div class="post-header">
+
+      
+      
+        <h1 class="post-title">
+          
+          
+            
               <a class="post-title-link" href="/2015/05/08/我不是备胎，我是你的领跑员/">
                 我不是备胎，我是你的领跑员
               </a>
@@ -703,7 +787,7 @@
         <div class="site-state motion-element">
           <div class="site-state-item site-state-posts">
             <a href="/archives">
-              <span class="site-state-item-count">4</span>
+              <span class="site-state-item-count">5</span>
               <span class="site-state-item-name">日志</span>
             </a>
           </div>
@@ -717,7 +801,7 @@
 
           <div class="site-state-item site-state-tags">
             <a href="/tags">
-              <span class="site-state-item-count">3</span>
+              <span class="site-state-item-count">4</span>
               <span class="site-state-item-name">标签</span>
               </a>
           </div>
