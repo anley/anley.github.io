@@ -362,6 +362,10 @@ dd {
 .brand {
   border-radius: 4px 15px 4px 15px;
 }
+.brand,
+.btn {
+  border-radius: 4px;
+}
 table {
   width: 100%;
   border-collapse: collapse;
@@ -1182,7 +1186,7 @@ input.menu-search-input {
   width: 4px;
   height: 4px;
   border-radius: 50%;
-  background: #7514ff;
+  background: #6646a6;
 }
 .sidebar-nav {
   margin: 0;
