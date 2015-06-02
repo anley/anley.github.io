@@ -177,91 +177,12 @@
       
         
           <blockquote>
-<p>众所周知，PHP是一个单线程的脚本开发语言，它常在Web开发及系统集成中出现。其灵活简单成本低廉深受互联网公司青睐，初期大量公司使用它进行快速迭代高效迭代出大量产品服务，但是当流量增长后他的弊端会渐渐展现，很多公司为此吃过不少他的苦头。但往往都是短期放弃后，待后端底层数据完善后又用起来，让人又爱又恨，其中发生了什么，是什么造成这个状态，下面我简单介绍下PHP目前架构中碰到的各种问题及解决方法来慢慢分析事情的原因经过结果，当然最后还要介绍下PHP新的技术革命的并发编程开始。</p>
-<p>声明：此篇文章不是批判PHP，而是希望他更好的发展，请各位原谅我的狂放</p>
-</blockquote>
-<p><strong>相信每一家成长中的公司多少都会经历以下事宜：</strong></p>
-<p><strong>问题：</strong>PHP不是常驻内存的进程，每个请求过来后都会重新加载解析一次脚本，平时流量不多的时候看不出来，当业务发展后业务复杂度增加而PHP加载的文件越来越多，磁盘IO负载不断增加，由于并发增多磁盘效率下降，每次请求都会渐渐变慢。</p>
-<blockquote>
-<p>解决方法：使用opcache缓冲转换后的代码，文件如果没有更新则只需转换一次后就一直在内存中。</p>
-</blockquote>
-<p><strong>问题：</strong>不是常驻内存，从持久层获取来的数据也不会有任何内存保存（当然其他常驻内存的语言即使能做到但也不会这么做，因为会因为数据不同步导致脏数据）当流量不断增加的时候持久层一直是个单点服务器（主从后主库也是唯一单点）前端服务器可以横向扩展但是单点的持久层是不能增加的，最后导致大量的持久层拆分及相关繁琐事宜。</p>
-<blockquote>
-<p>解决方法：使用Memcache或Redis缓冲热数据进行缓冲或启用其他可分布式事务持久层。如果没有统一的方案，只能使用架构对业务特有环境特性适配各种架构方案。目前redis虽然是个好的关系NOSQL但是还是太烧人和钱。或拆库拆表，又一条悲壮的路。</p>
-</blockquote>
-<p><strong>问题：</strong>不是常驻内存，很多特殊服务无法使用PHP脚本实现，只能依靠外力去做，如制作计数服务只能依靠C或Redis等服务去做，而自己本身的扩展对于通讯及进程类支持很弱这导致了PHP对于集成功能逐渐走下坡路。社区的扩展热情还是太小，这要加强！只要这个功能强化了用PHP搞分布式计算和数据挖掘都是小意思。</p>
-<p>解决方法：发展社区，广开言路，支持各种野八路提想法和扩展，不断开发PHP能力扩展插件，要知道PHP是靠Extension扩展来扩展其能力的，而扩展是用C开发的，这意味着C能做什么PHP就能做什么，只要扩展社区活跃神马语言都竞争不过他。​之前有人说PHP性能不好，很多是因为PHP的弱类型变量，那好PHP7开始支持强类型了期望PHP走的更好更稳，能做到别人有我也有，别人没有我也有的境界。不要说风格不是以前PHP了，要知道任何一门开发语言一直在升级变化适应需要。另外，可以考虑通讯使用Swoole。</p>
-<p><strong>框架规范性问题：</strong>PHP是一个很灵活的语言，相对于任何一个语言来说他没有强制的规定开发人员可以做什么事情，不可以做什么事情。所以往往集团混战的时候会导致项目可重用性可维护性较差，当然也是正式因为如此PHP才被互联网采用（为什么？因为互联网产品就是不断的快速迭代翻新的，常规软件的瀑布流方式会死）​</p>
-<blockquote>
-<p>解决方法：只要高手或者自律性极强或及其听话的研发人员，统一制定开发标准，划分模块及项目，一人负责一块，谁也不插手别人思考后的写法。虽然不在一起工作，但是思想一定要统一。或采用一个隔离性极强的方式去做，如Socket通讯RPC等。</p>
-</blockquote>
-<p><strong>问题：</strong>PHP是单进程单线程的，当处理复杂的业务的时候我们会发现他串行执行命令的时候CPU、磁盘、内存等利用的都很低有很多时候都是在排队等待，有的时候我们想并发的让他去执行一批任务然后一起拿解决结果是一件很痛苦的事情（自己用pthread或者其他方式才能解决，但是这很痛苦）​</p>
-<blockquote>
-<p>解决方法：分前后端，前端可以通过消息中间件，同步、异步 调用一个或多个接口。但是socket的扩展确确实实不咋好用。不是普通小企业能做的出来的。</p>
-</blockquote>
-<p><strong>问题：</strong>资源争抢问题，当我们使用持久层的时候往往有些关键数据是不能及时同步的，如库存剩余，抢购这类高并发的业务我们都会很自觉的在持久层或者前端做了大量拦截和锁定，这时我们会发现我们的持久层压力很大很多其他无关的业务也躺枪。</p>
-<blockquote>
-<p>解决方法：使用队列但是能让php使用的完善队列并不是很多，全局单个数据或事务锁定服务目前PHP还在石器时代大多数小公司都是直接在持久层锁定或使用Redis（Java研究分布式很久了，所以有zookeeper一类）</p>
-</blockquote>
-<p><strong>问题：</strong>单个文件并发写乱问题​​，当业务产生错误及时的预警，文件无法异步写只能等待写完后（只有写的内容多才会有感觉）</p>
-<blockquote>
-<p>解决方法​：使用扩展插件，并且将日志集中监控管理（facebook那个分布式日志系统就不说了光编译都够掉半管血），各位慢慢翻不着急。。。文件异步写暂时不要想了目前大部分语言都不能</p>
-</blockquote>
-<p><strong>问题：</strong>文件共享问题​，同上个问题，目前可以和PHP配合使用（从小公司发展到大公司的过程都适用的方案很少）的分布式文件存储实在太少了，大猫小猫三两只，即使有也不出名不完善不好用。</p>
-<blockquote>
-<p>解决方法:再翻翻开源找一个。。​逼作者完善，或写到redis然后异步队列慢慢dump</p>
-</blockquote>
-<p><strong>问题：</strong>并发流量增加后，资源争抢严重，很多简单的事情变得扑朔迷离，如mysql主从延迟超过30秒，我们往往查询一个用户是否点过赞他点过了，从库好好久才能同步在这个期间他可以点1000次刷分等。</p>
-<blockquote>
-<p>解决方法：前端cookie加锁，服务加公共锁（setnx+expire），学会使用悲观锁乐观锁。</p>
-</blockquote>
-<p><strong>问题：</strong>由于大量使用memcache很多无用数据都扔进去，导致memcache成天在不同大小的slab乱扔数据。</p>
-<blockquote>
-<p>解决方法：烧钱多搭建几个memcache，好好规划下自己的数据缓冲及规则。超过1M的数据memcache会不缓冲的。</p>
-</blockquote>
-<p><strong>问题：</strong>memcache内的数据是脏的</p>
-<blockquote>
-<p>解决方法：集中封装底层DAO，一旦数据发生变更，自动更新相关cache，如果更新频率极高扔到redis内存储。​确认前端哪些部分的数据是无所谓是否过时的。</p>
-</blockquote>
-<p><strong>问题：</strong>模块划分不清晰，很多数据重复获取</p>
-<blockquote>
-<p>解决方法：模块层级太多，导致一些东西被重复调用​，只能说改改吧。。或者用依赖注入，类自己本身缓冲一些数据，但是可能是过时的数据，或者导致PHP内存超。</p>
-</blockquote>
-<p>事实上以上问题不仅仅PHP遇到了，很多主流开发语言碰到同样的问题。​很多情况下小公司流量不大的时候是不会碰到以上大坑的，但是当某一天流量增长了这些问题都会慢慢浮现不断折磨每一个开发人员的神经。</p>
-<p>造成以上原因的情况很多都是因为几个关键字：</p>
-<p>PHP没有常驻内存​（虽然他能）</p>
-<p>PHP很难独立做服务 （虽然他能）</p>
-<p>PHP分布式云支持少 （虽然他也能）</p>
-<p>PHP扩展太少了（C开发难度大，国内程序精力问题）</p>
-<p>PHP​规范太少（没人强制规定他标准对错）</p>
-<p>PHP对持久层依赖太大（继续等开源）​</p>
-<p>说了这么多​，PHP没救了？NO！你想错了</p>
-<p>发现​了问题就去解决他</p>
-<p>PHP没有常驻内存？那么我们用PHP Cli即可</p>
-<p>PHP很难独立做服务？那是因为通讯组件不好用，用Swoole啊</p>
-<p>PHP分布式云支持很少，通讯问题都解决了害怕啥自己写个都行</p>
-<p>PHP扩展太少了？没事我们后期也可以使用php写扩展了请看zephir</p>
-<p>PHP规范太少了？没关系，我们团队自己商量着来，比规范的太规范没有空间​只能hack做事要好太多了！</p>
-<p>PHP对持久层依赖太大？好吧这个是一直存在的，我们多用各种开源NOSQL吧，有的没给我们PHP写驱动？那好我们用Swoole+zephir​搞定他，什么mysql代理，什么redis一致性hash代理，什么longtail。</p>
-<p>PHP性能不好？等新版吧~虽然不是最快的但也不是最慢的​</p>
-<p>我相信这个世界上没有最好的开发语言，只有最好的社区。</p>
-<p>PHP目前来说是互联网产出最快，经历最多的一门语言之一。​</p>
-<p>只要我们认为他是一个好开发语言，不断努力改进它，丰富他</p>
-<p>任何语言，思路，想法都不会超越PHP，因为他们有我们也可以有。</p>
-<p>走起~PHP社区加油！Swoole加油！</p>
-<p>期望Swoole的出现是一个引爆点，再次将PHP的辉煌重现，要知道C能做什么，PHP就能做什么，要知道 linux也是C系列写的~</p>
-<p>别人能编译我们也能编译（HHVM）​</p>
-<p>别人能做代理我们也能做代理（Swoole）</p>
-<p>别人能做长连接我们也能做长连接（Swoole，Socket，libevent，Libuv）</p>
-<p>别人能并发异步调用我们也能并发异步调用（Swoole，LibUV，Libevent）</p>
-<p>别人能用LXC写系统隔离我们也能用它写系统隔离（等PHP性能再提升一次，鸟哥加油我们看好你：D）</p>
-<p>别人能用开发语言写自己的扩展我们也能（Zephir等）</p>
-<p>别人有高性能框架我们也有（Phalcon，Yaf）</p>
-<p>别人能开发分布式存储，我们也能开发分布式存储​</p>
-<p>当然他们还在成长，并且很缓慢。各位，我们需要作什么才能加速这个过程？请支持他们，那就是使用！宣扬！反馈！促进他们成长！也让我们自己成长！</p>
-<p>他们成长了，我们脚下的巨人才会更健壮。​我们才能站得更高，做的更广。</p>
-<p><blockquote class="blockquote-center">此致敬礼！​<blockquote></blockquote></blockquote></p>
-
+<p>众所周知，PHP是一个单线程的脚本开发语言，它常在Web开发及系统集成中出现。其灵活简单成本低廉深受互联网公司青睐，初期大量公司使用它进行快速迭代高效迭代出大量产品服务，但是当流量增长后他的弊端会渐渐展现，很多公司为此吃过不少他的苦头。但往往都是短期放弃后，待后端底层数据完善后又用起来，让人又爱又恨，其中发生了什么，是什么造成这个状态，下面我简单介绍下PHP目前架构中碰到的各种问题及解决方法来慢慢分析事情的原因经过结果，当然最后还要介绍下PHP新的技术革命的并发编程开始。<br>
+          <div class="post-more-link text-center">
+            <a class="btn" href="/2015/06/01/PHP-过往及现在及变革/#more">
+              阅读全文 &raquo;
+            </a>
+          </div>
         
       
     </div>
@@ -334,20 +255,12 @@
 
       
         
-          <p>Tclip致力于人脸识别和图片显著性区域的识别。它与其他图片裁剪程序最大的不同之处在于，在裁剪后的图片中保留人脸和其他图片显著性区域。</p>
-<p>演示地址：<a href="http://demo.bo56.com/tclip" target="_blank" rel="external">http://demo.bo56.com/tclip</a></p>
-<h1 id="安装步骤：">安装步骤：</h1><h2 id="源码下载：">源码下载：</h2><h4 id="下载opencv源码：http://www-bo56-com/download/opencv2-tar-bz2">下载opencv源码：<a href="http://www.bo56.com/download/opencv2.tar.bz2" target="_blank" rel="external">http://www.bo56.com/download/opencv2.tar.bz2</a></h4><h4 id="下载Tclip源码：">下载Tclip源码：</h4><p><a href="http://code.taobao.org/p/tclip/src/" target="_blank" rel="external">http://code.taobao.org/p/tclip/src/</a><br><a href="https://github.com/exinnet/tclip" target="_blank" rel="external">https://github.com/exinnet/tclip</a></p>
-<h4 id="安装opencv2：">安装opencv2：</h4><p>此扩展依赖于opencv2.0 之上版本。因此安装前先安装opencv。opencv的安装步骤如下：<br>安装过程中有任何疑问可以加qq 179815944咨询。</p>
-<h4 id="1-安装如下依赖包：_gtk+_gtk+-devel_pkgconfig_libpng_zlib_libjpeg_libtiff_cmake">1.安装如下依赖包： gtk+ gtk+-devel pkgconfig libpng zlib libjpeg libtiff cmake</h4><p>如果是centos可以执行如下命令进行安装依赖包：<br>yum install gtk+ gtk+-devel pkgconfig libpng zlib libjpeg libtiff cmake</p>
-<h4 id="2-安装opencv2，步骤如下：">2.安装opencv2，步骤如下：</h4><p>解压安装包<br><figure class="highlight"><figcaption><span>进入安装包文件夹内。</span></figcaption><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">cmake CMakeLists.txt&#10;make &#38;&#38; make install&#10;vim /etc/profile&#10;//&#27880;&#24847;&#65292;&#22312;&#32534;&#35793;opencv&#26102;&#65292;&#35201;&#20351;&#29992;gcc&#30340;4.4&#29256;&#26412;&#25110;&#32773;&#20043;&#19978;&#12290;&#21542;&#21017;&#20250;&#25253;&#38169;&#12290;</span><br></pre></td></tr></table></figure></p>
-<h4 id="3-设相关环境变量">3.设相关环境变量</h4><figure class="highlight"><figcaption><span>unset i 前增加</span></figcaption><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">export PKG_CONFIG_PATH=/usr/lib/pkgconfig/:/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH&#10;&#20445;&#25345;&#36864;&#20986;&#21518;&#65292;&#25191;&#34892;&#22914;&#19979;&#21629;&#20196;&#10;source /etc/profile&#10;echo &#8220;/usr/local/lib/&#8221; &#62; /etc/ld.so.conf.d/opencv.conf&#10;ldconfig</span><br></pre></td></tr></table></figure>
-<p>安装php图片裁剪tclip扩展<br>cd 到源代码目录中的php_ext文件夹<br><figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">./configure&#10;make&#10;cp modules/tclip.so &#21040; extension &#30446;&#24405;&#10;&#20462;&#25913;php.ini&#12290;&#21152;&#20837; extension=tclip.so</span><br></pre></td></tr></table></figure></p>
-<p>重启fpm<br>安装命令行<br>如果想使用命令行方式，可以进行如下安装<br>cd 进入安装包soft文件夹内<br><figure class="highlight"><figcaption><span>+x ./tclip.sh</span></figcaption><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">./tclip.sh</span><br></pre></td></tr></table></figure></p>
-<p>使用方法说明</p>
-<h2 id="第一种：在php中图片裁剪使用格式：">第一种：在php中图片裁剪使用格式：</h2><p>tclip(文件原路径，裁剪后的图片保存路径，裁剪后的图片宽度，裁剪后的图片高度)<br><figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$source_file = &#8220;/tmp/a.jpg&#8221;;&#10;$dest_file = &#8220;/www/a_dest.jpg&#8221;;&#10;$width = 400;&#10;$height = 200;&#10;$ret =tclip($source_file, $dest_file, $width, $height);</span><br></pre></td></tr></table></figure></p>
-<p>执行成功$ret 为true，否则为false</p>
-<h2 id="第二种：命令行">第二种：命令行</h2><figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">-s &#21407;&#22270;&#36335;&#24452;&#10;-d &#35009;&#21098;&#21518;&#30340;&#22270;&#29255;&#20445;&#23384;&#36335;&#24452;&#10;-w &#35009;&#21098;&#21518;&#30340;&#22270;&#29255;&#23485;&#24230;&#10;-h &#35009;&#21098;&#21518;&#30340;&#22270;&#29255;&#39640;&#24230;&#10;./tclip -s a.jpg -d a_dest.jpg -w 400 -h 200</span><br></pre></td></tr></table></figure>
-
+          <p>Tclip致力于人脸识别和图片显著性区域的识别。它与其他图片裁剪程序最大的不同之处在于，在裁剪后的图片中保留人脸和其他图片显著性区域。<br>
+          <div class="post-more-link text-center">
+            <a class="btn" href="/2015/05/20/Tclip/#more">
+              阅读全文 &raquo;
+            </a>
+          </div>
         
       
     </div>
@@ -418,33 +331,12 @@
 
       
         
-          <h1 id="Memory_Addresses">Memory Addresses</h1><p>It is helpful to think of everything in C in terms of computer memory. Let’s think of computer memory as an array of bytes where each address in memory holds 1 byte. If our computer has 4K of memory for example, it would have 4096 elements in the memory array. When we talk about pointers storing addresses, we are talking about a pointer storing an index to an element in the memory array. Dereferencing a pointer would be getting the value at that index in the array. All of this is of course a lie. How operating systems handle memory is much more complex than this. Memory is not necessarily contiguous and it is not necessarily handed out sequentially. But the analogy provides an easy way to think about memory in C to get started.</p>
-<p>Confused about pointers, addresses and dereferencing? Take a look at this 5-Minute Guide to Pointers.</p>
-<p>Say our computer has 4K of memory and the next open address is index 2048. We declare a new char variable i = ‘a’. When the variable gets declared memory is set aside for its value and the variable name is linked to that location in memory. Our char i has a value ‘a’ stored at the address 2048. Our char is a single byte so it only takes up index 2048. If we use the address-of operator (&amp;) on our variable i it would return the address 2048. If the variable was a different type, int for instance, it would take up 4 bytes and use up elements 2048-2051 in the array. Using the address-of operator would still return 2048 though because the int starts at that index even though it takes up 4 bytes. Let’s look at an example.</p>
-<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// intialize a char variable, print its address and the next address</span></span><br><span class="line"><span class="keyword">char</span> charvar = <span class="string">'\0'</span>;</span><br><span class="line"><span class="built_in">printf</span>(<span class="string">"address of charvar = %p\n"</span>, (<span class="keyword">void</span> *)(&amp;charvar));</span><br><span class="line"><span class="built_in">printf</span>(<span class="string">"address of charvar - 1 = %p\n"</span>, (<span class="keyword">void</span> *)(&amp;charvar - <span class="number">1</span>));</span><br><span class="line"><span class="built_in">printf</span>(<span class="string">"address of charvar + 1 = %p\n"</span>, (<span class="keyword">void</span> *)(&amp;charvar + <span class="number">1</span>));</span><br><span class="line"> </span><br><span class="line"><span class="comment">// intialize an int variable, print its address and the next address</span></span><br><span class="line"><span class="keyword">int</span> intvar = <span class="number">1</span>;</span><br><span class="line"><span class="built_in">printf</span>(<span class="string">"address of intvar = %p\n"</span>, (<span class="keyword">void</span> *)(&amp;intvar));</span><br><span class="line"><span class="built_in">printf</span>(<span class="string">"address of intvar - 1 = %p\n"</span>, (<span class="keyword">void</span> *)(&amp;intvar - <span class="number">1</span>));</span><br><span class="line"><span class="built_in">printf</span>(<span class="string">"address of intvar + 1 = %p\n"</span>, (<span class="keyword">void</span> *)(&amp;intvar + <span class="number">1</span>));</span><br></pre></td></tr></table></figure>
-<p>Running that you should get output like the following:</p>
-<figure class="highlight stylus"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">address</span> of charvar = <span class="number">0</span>x7fff9575c05f</span><br><span class="line"><span class="tag">address</span> of charvar - <span class="number">1</span> = <span class="number">0</span>x7fff9575c05e</span><br><span class="line"><span class="tag">address</span> of charvar + <span class="number">1</span> = <span class="number">0</span>x7fff9575c060</span><br><span class="line"><span class="tag">address</span> of intvar = <span class="number">0</span>x7fff9575c058</span><br><span class="line"><span class="tag">address</span> of intvar - <span class="number">1</span> = <span class="number">0</span>x7fff9575c054</span><br><span class="line"><span class="tag">address</span> of intvar + <span class="number">1</span> = <span class="number">0</span>x7fff9575c05c</span><br></pre></td></tr></table></figure>
-<p>In the first example on lines 1-5 we declare a char variable, print out the address-of the char, and then print out the address just before and just after the char in memory. We get the addresses before and after by getting the using the &amp; operator and then adding or subtracting one. In the second example on lines 7-11 we do the same thing except this time we declare an int variable, printing out its address and the addresses right before and after it.</p>
-<p>In the output we see the addresses in hexadecimal. What is important to notice is that the char addresses are 1 byte before and after while the int the addresses are 4 bytes before and after. Math on memory addresses, pointer math, is based on the sizeof the type being referenced. The size of a given type is platform dependent but for this example our char takes 1 byte and our int takes 4 bytes. Subtracting 1 address from a char gives a memory address that is 1 byte previous while subtracting 1 from an int gives a memory address that is 4 bytes previous.</p>
-<p>Even though in our example we were using the address-of operator to get the addresses of our variables, the operations are the same when using pointers that hold the address-of a varible.</p>
-<p>Some commenters have brought up that storing &amp;charvar – 1, an invalid address because it is before the array, is technically unspecified behavior. This is true. The C standard does have areas that are unspecified and on some platforms even storing an invalid address will cause an error.</p>
-<h1 id="Array_Addresses">Array Addresses</h1><p>Arrays in C are contiguous memory areas that hold a number of values of the same data type (int, long, *char, etc.). Many programmers when they first use C think arrays are pointers. That isn’t true. A pointer stores a single memory address, an array is a contiguous area of memory that stores multiple values.</p>
-<figure class="highlight smali"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">// initialize an<span class="instruction"> array </span>of ints<span class="instruction"></span><br><span class="line">int </span>numbers<span class="keyword">[</span>5] = &#123;1,2,3,4,5&#125;;<span class="instruction"></span><br><span class="line">int </span>i = 0;</span><br><span class="line"> </span><br><span class="line">// print the address of the<span class="instruction"> array </span>variable</span><br><span class="line">printf(<span class="string">"numbers = %p\n"</span>, numbers<span class="function">)</span>;</span><br><span class="line"> </span><br><span class="line">// print addresses of each<span class="instruction"> array </span>index</span><br><span class="line">do &#123;</span><br><span class="line">   <span class="function"> printf(</span><span class="string">"numbers[%u] = %p\n"</span>, i,<span class="function"> (</span>void<span class="function"> *)(</span>&amp;numbers<span class="keyword">[</span>i]<span class="function">)</span><span class="function">)</span>;</span><br><span class="line">    i++;</span><br><span class="line">&#125;<span class="function"> while(</span>i &lt; 5<span class="function">)</span>;</span><br><span class="line"> </span><br><span class="line">// print the size of the<span class="instruction"> array</span><br><span class="line"></span>printf(<span class="string">"sizeof(numbers) = %lu\n"</span>,<span class="function"> sizeof(</span>numbers<span class="function">)</span><span class="function">)</span>;</span><br></pre></td></tr></table></figure>
-<p>Running that you should get output like the following:<br><figure class="highlight x86asm"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">numbers = <span class="number">0x7fff0815c0e0</span></span><br><span class="line">numbers[<span class="number">0</span>] = <span class="number">0x7fff0815c0e0</span></span><br><span class="line">numbers[<span class="number">1</span>] = <span class="number">0x7fff0815c0e4</span></span><br><span class="line">numbers[<span class="number">2</span>] = <span class="number">0x7fff0815c0e8</span></span><br><span class="line">numbers[<span class="number">3</span>] = <span class="number">0x7fff0815c0ec</span></span><br><span class="line">numbers[<span class="number">4</span>] = <span class="number">0x7fff0815c0f0</span></span><br><span class="line">sizeof(numbers) = <span class="number">20</span></span><br></pre></td></tr></table></figure></p>
-<p>In this example we initialize an array of 5 ints. We then print the address of the array itself. Notice we didn’t use the address-of &amp; operator. This is because the array variable already decays to the address of the first element in the array. As you can see the address of the array and the address of the first element in the array are the same. Then we loop through the array and print out the memory addresses at each index. Each int is 4 bytes on our computer and array memory is contiguous, so each int addres be 4 bytes away from each other.</p>
-<p>In the last line we print the size of the array. The size of an array is the sizeof(type) * number of elements in the array. Here the array holds 5 ints, each of which takes up 4 bytes. The entire array is 20 bytes.</p>
-<h1 id="Struct_Addresses">Struct Addresses</h1><p>Structs in C tend to be contiguous memory areas, though not always. And like arrays they hold multiple data types, but unlike arrays they can hold a different data types.</p>
-<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">struct</span> measure &#123;</span><br><span class="line">  <span class="keyword">char</span> category;</span><br><span class="line">  <span class="keyword">int</span> width;</span><br><span class="line">  <span class="keyword">int</span> height;</span><br><span class="line">&#125;;</span><br><span class="line"> </span><br><span class="line"><span class="comment">// declare and populate the struct</span></span><br><span class="line"><span class="keyword">struct</span> measure ball;</span><br><span class="line">ball.category = <span class="string">'C'</span>;</span><br><span class="line">ball.width = <span class="number">5</span>;</span><br><span class="line">ball.height = <span class="number">3</span>;</span><br><span class="line"> </span><br><span class="line"><span class="comment">// print the addresses of the struct and its members</span></span><br><span class="line"><span class="built_in">printf</span>(<span class="string">"address of ball = %p\n"</span>, (<span class="keyword">void</span> *)(&amp;ball));</span><br><span class="line"><span class="built_in">printf</span>(<span class="string">"address of ball.category = %p\n"</span>, (<span class="keyword">void</span> *)(&amp;ball.category));</span><br><span class="line"><span class="built_in">printf</span>(<span class="string">"address of ball.width = %p\n"</span>, (<span class="keyword">void</span> *)(&amp;ball.width));</span><br><span class="line"><span class="built_in">printf</span>(<span class="string">"address of ball.height = %p\n"</span>, (<span class="keyword">void</span> *)(&amp;ball.height));</span><br><span class="line"> </span><br><span class="line"><span class="comment">// print the size of the struct</span></span><br><span class="line"><span class="built_in">printf</span>(<span class="string">"sizeof(ball) = %lu\n"</span>, <span class="keyword">sizeof</span>(ball));</span><br></pre></td></tr></table></figure>
-<p>Running that you should get output like the following:<br><figure class="highlight stylus"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">address</span> of ball = <span class="number">0</span>x7fffd1510060</span><br><span class="line"><span class="tag">address</span> of ball<span class="class">.category</span> = <span class="number">0</span>x7fffd1510060</span><br><span class="line"><span class="tag">address</span> of ball<span class="class">.width</span> = <span class="number">0</span>x7fffd1510064</span><br><span class="line"><span class="tag">address</span> of ball<span class="class">.height</span> = <span class="number">0</span>x7fffd1510068</span><br><span class="line"><span class="function"><span class="title">sizeof</span><span class="params">(ball)</span></span> = <span class="number">12</span></span><br></pre></td></tr></table></figure></p>
-<p>In this example we have our struct definition. Then we declare a instance ball of the struct measure and we populate its width, height, and category members with values. Then we print out the address of the ball variable. Like the array varible structs decay to the address of their first element. We then print out each of the struct members. Category is the is the first member and we see that it has the same address as the ball variable. The width member is next followed by the height member. Both have address higher than the category member.</p>
-<p>You might think that because category is a char and chars take up 1 byte then the width member should be at an address 1 byte higher than the start. As you can see from the output this isn’t the case. According to the C99 standard (C99 §6.7.2.1), a C implementation can add padding bytes to members for aligment on byte boundaries. It cannot reorder the data members but it can add in padding bytes. In practice most compilers will make each member the same size as the largest member in the struct but this is entirely implementatation specific.</p>
-<p>In our example you can see that the char actually takes up 4 bytes and the size of the struct takes a total of 12 bytes. What to take away? </p>
-<pre><code>*A struct <span class="built_in">variable</span> points <span class="built_in">to</span> <span class="operator">the</span> address <span class="operator">of</span> <span class="operator">the</span> <span class="keyword">first</span> member <span class="operator">in</span> <span class="operator">the</span> struct.
-*Don’t assume that struct members will be <span class="operator">a</span> specific <span class="built_in">number</span> <span class="operator">of</span> <span class="keyword">bytes</span> away <span class="built_in">from</span> another field, they may have padding <span class="keyword">bytes</span> <span class="operator">or</span> <span class="operator">the</span> memory might <span class="operator">not</span> be contiguous depending <span class="command"><span class="keyword">on</span> <span class="title">the</span> <span class="title">implementation</span>. <span class="title">Use</span> <span class="title">the</span> <span class="title">address-of</span> (&amp;) <span class="title">operator</span> <span class="title">on</span> <span class="title">the</span> <span class="title">member</span> <span class="title">to</span> <span class="title">get</span> <span class="title">its</span> <span class="title">address</span>.</span>
-*And use sizeof(struct instance) <span class="built_in">to</span> <span class="built_in">get</span> <span class="operator">the</span> total size <span class="operator">of</span> <span class="operator">the</span> struct, don’t assume <span class="keyword">it</span> is just <span class="operator">the</span> <span class="built_in">sum</span> <span class="operator">of</span> its member fields, <span class="keyword">it</span> may have padding.
-</code></pre><h1 id="Conclusion">Conclusion</h1><p>Hope this post helps you to understand more about how addresses operate on different data types in C. In a future post we will go over some basics on pointers and arrays in C.</p>
-<p>Update 1:Thanks to Sorito, I added a link back to blog post about pointers, addresses, and dereferencing.<br>Update 2:Thanks to Keith Thompson and tjoff from hacker news for helping clarify struct addresses and memory. I reworked the example code to be more clear about memory.</p>
-
+          <h1 id="Memory_Addresses">Memory Addresses</h1><p>It is helpful to think of everything in C in terms of computer memory. Let’s think of computer memory as an array of bytes where each address in memory holds 1 byte. If our computer has 4K of memory for example, it would have 4096 elements in the memory array. When we talk about pointers storing addresses, we are talking about a pointer storing an index to an element in the memory array. Dereferencing a pointer would be getting the value at that index in the array. All of this is of course a lie. How operating systems handle memory is much more complex than this. Memory is not necessarily contiguous and it is not necessarily handed out sequentially. But the analogy provides an easy way to think about memory in C to get started.<br>
+          <div class="post-more-link text-center">
+            <a class="btn" href="/2015/05/06/Basics-of-Memory-Addresses-in-C/#more">
+              阅读全文 &raquo;
+            </a>
+          </div>
         
       
     </div>
