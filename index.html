@@ -130,6 +130,127 @@
           
           
             
+              <a class="post-title-link" href="/2015/07/01/OpenResty中使用lua/">
+                OpenResty中使用lua
+              </a>
+            
+          
+        </h1>
+      
+
+      <div class="post-meta">
+        <span class="post-time">
+          发表于 2015-07-01
+        </span>
+
+        
+          <span class="post-category">
+            &nbsp; | &nbsp; 分类于
+            
+              <a href="/categories/lua/">lua</a>
+
+              
+              
+                ， 
+              
+
+            
+              <a href="/categories/lua/nginx/">nginx</a>
+
+              
+              
+
+            
+          </span>
+        
+
+        
+          
+            <span class="post-comments-count">
+            &nbsp; | &nbsp;
+            <a href="/2015/07/01/OpenResty中使用lua/#comments" >
+              <span class="post-comments-count ds-thread-count" data-thread-key="2015/07/01/OpenResty中使用lua/"></span>
+            </a>
+          </span>
+          
+        
+      </div>
+    </div>
+
+    <div class="post-body fmt">
+
+      
+      
+
+      
+        
+          <h3 id="ngx_lua">ngx_lua</h3><h4 id="1-_原理">1. 原理</h4><p>ngx_lua将Lua嵌入Nginx，可以让Nginx执行Lua脚本，并且高并发、非阻塞的处理各种请求。Lua内建协程，这样就可以很好的将异步回调转换成顺序调用的形式。ngx_lua在Lua中进行的IO操作都会委托给Nginx的事件模型，从而实现非阻塞调用。开发者可以采用串行的方式编写程序，ngx_lua会自动的在进行阻塞的IO操作时中断，保存上下文；然后将IO操作委托给Nginx事件处理机制，在IO操作完成后，ngx_lua会恢复上下文，程序继续执行，这些操作都是对用户程序透明的。</p>
+<p>每个NginxWorker进程持有一个Lua解释器或者LuaJIT实例，被这个Worker处理的所有请求共享这个实例。每个请求的Context会被Lua轻量级的协程分割，从而保证各个请求是独立的。</p>
+<p>ngx_lua采用“one-coroutine-per-request”的处理模型，对于每个用户请求，ngx_lua会唤醒一个协程用于执行用户代码处理请求，当请求处理完成这个协程会被销毁。每个协程都有一个独立的全局环境（变量空间），继承于全局共享的、只读的“comman data”。所以，被用户代码注入全局空间的任何变量都不会影响其他请求的处理，并且这些变量在请求处理完成后会被释放，这样就保证所有的用户代码都运行在一个“sandbox”（沙箱），这个沙箱与请求具有相同的生命周期。</p>
+<p>得益于Lua协程的支持，ngx_lua在处理10000个并发请求时只需要很少的内存。根据测试，ngx_lua处理每个请求只需要2KB的内存，如果使用LuaJIT则会更少。所以ngx_lua非常适合用于实现可扩展的、高并发的服务。</p>
+<h4 id="2-典型应用">2.典型应用</h4><blockquote>
+<ul>
+<li><p>Mashup’ing and processing outputs of various nginx upstream outputs(proxy, drizzle, postgres, redis, memcached, and etc) in Lua,</p>
+</li>
+<li><p>doing arbitrarily complex access control and security checks in Luabefore requests actually reach the upstream backends,</p>
+</li>
+<li><p>manipulating response headers in an arbitrary way (by Lua)</p>
+</li>
+<li><p>fetching backend information from external storage backends (likeredis, memcached, mysql, postgresql) and use that information to choose whichupstream backend to access on-the-fly,</p>
+</li>
+<li><p>coding up arbitrarily complex web applications in a content handlerusing synchronous but still non-blocking access to the database backends andother storage,</p>
+</li>
+<li><p>doing very complex URL dispatch in Lua at rewrite phase,</p>
+</li>
+<li><p>using Lua to implement advanced caching mechanism for nginxsubrequests and arbitrary locations.</p>
+</li>
+</ul>
+</blockquote>
+<h4 id="3-Hello_Lua！">3.Hello Lua！</h4><p>配置：<br><figure class="highlight nginx"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># nginx.conf      </span></span><br><span class="line"><span class="title">worker_processes</span> <span class="number">4</span>;   </span><br><span class="line">  </span><br><span class="line"><span class="title">events</span> &#123;  </span><br><span class="line">     <span class="title">worker_connections</span> <span class="number">1024</span>;   </span><br><span class="line">&#125;  </span><br><span class="line"><span class="title">http</span> &#123;  </span><br><span class="line">  </span><br><span class="line">    <span class="title">server</span> &#123;  </span><br><span class="line">        <span class="title">listen</span> <span class="number">80</span>;   </span><br><span class="line">        <span class="title">server_name</span> localhost;  </span><br><span class="line">          </span><br><span class="line">        <span class="title">location</span> = /lua &#123;  </span><br><span class="line">            <span class="title">content_by_lua</span> ‘   </span><br><span class="line">                ngx.say(<span class="string">"Hello, Lua!"</span>)  </span><br><span class="line">            <span class="string">';  </span><br><span class="line">        &#125;  </span><br><span class="line">    &#125;  </span><br><span class="line">&#125;</span></span><br></pre></td></tr></table></figure></p>
+<p>输出：<br><figure class="highlight elixir"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="variable">$ </span>curl <span class="string">'localhost/lua'</span>  </span><br><span class="line"><span class="constant">Hello，Lua！</span></span><br></pre></td></tr></table></figure></p>
+<p>这样就实现了一个很简单的ngx_lua应用，如果这么简单的模块要是用C来开发的话，代码量估计得有100行左右，从这就可以看出ngx_lua的开发效率。</p>
+<h4 id="4-Benchmark">4.Benchmark</h4><p>通过和nginx访问静态文件还有nodejs比较，来看一下ngx_lua提供的高并发能力。<br>返回的内容都是<code>&quot;Hello World!&quot;</code>，<code>151bytes</code><br>通过.ab -n 60000   取10次平均<br>| || 1000 | 3000 |    5000 | 7000 | 10000 |<br>| ——| ——| ——| ——| ——| ——|<br>| nginx静态文件 | 11351 | 9653 | 8929 | 8997 | 9722 |<br>| nodejs | 10846 | 9510 | 8898 | 8387 | 7820 |<br>| ngx_lua | 13839 | 10174 | 9523 | 10309 | 10711 |<br>从图表中可以看到，在各种并发条件下ngx_lua的rps都是最高的，并且基本维持在10000rps左右，nginx读取静态文件因为会有磁盘io所以性能略差一些，而nodejs是相对最差的。通过这个简单的测试，可以看出ngx_lua的高并发能力。</p>
+<p>ngx_lua的开发者也做过一个测试对比nginx+fpm+php和nodejs，他得出的结果是ngx_lua可以达到28000rps，而nodejs有10000多一点，php则最差只有6000。可能是有些配置我没有配好导致ngx_lua rps没那么高。</p>
+
+        
+      
+    </div>
+
+    <div class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/lua/"> #lua </a>
+          
+            <a href="/tags/nginx/"> #nginx </a>
+          
+            <a href="/tags/openresty/"> #openresty </a>
+          
+        </div>
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </div>
+  </div>
+
+
+    
+      
+
+  <div class="post post-type-normal ">
+    <div class="post-header">
+
+      
+      
+        <h1 class="post-title">
+          
+          
+            
               <a class="post-title-link" href="/2015/06/11/Git常用命令/">
                 Git常用命令
               </a>
@@ -573,21 +694,21 @@
         <div class="site-state motion-element">
           <div class="site-state-item site-state-posts">
             <a href="/archives">
-              <span class="site-state-item-count">5</span>
+              <span class="site-state-item-count">6</span>
               <span class="site-state-item-name">日志</span>
             </a>
           </div>
 
           <div class="site-state-item site-state-categories">
             <a href="/categories">
-              <span class="site-state-item-count">3</span>
+              <span class="site-state-item-count">5</span>
               <span class="site-state-item-name">分类</span>
               </a>
           </div>
 
           <div class="site-state-item site-state-tags">
             <a href="/tags">
-              <span class="site-state-item-count">8</span>
+              <span class="site-state-item-count">11</span>
               <span class="site-state-item-name">标签</span>
               </a>
           </div>
